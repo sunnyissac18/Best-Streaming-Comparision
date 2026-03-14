@@ -1,0 +1,238 @@
+{#
+  home.html — The Homepage / Main Dashboard
+
+  This template EXTENDS base.html, meaning it inherits the nav bar,
+  fonts, CSS, and overall layout. It only needs to define what goes
+  inside the two blocks: content and scripts.
+
+  Variables passed in from app.py (home_dashboard function):
+    platforms       - list of platform names e.g. ['Netflix', ...]
+    platform_stats  - list of dicts, one per platform with cards data
+    library_sizes   - list of movie counts in same order as platforms
+    avg_quality     - list of average IMDB ratings
+    freshness       - list of post-2020 movie counts
+    subscriber_years - list of year strings ['2020', '2021', ...]
+    subscriber_data  - dict mapping platform -> list of subscriber numbers
+
+  Jinja2 syntax used here:
+    {% for item in list %}  ...  {% endfor %}
+      Loops over a list - like Python's for loop but inside HTML.
+
+    {{ variable }}
+      Prints the value of a variable.
+
+    {{ variable | tojson }}
+      Converts a Python list/dict to a JSON string safe for JavaScript.
+      This is how we pass Python data into Chart.js.
+
+    {{ stat.name }}
+      Accesses the 'name' key from a dictionary called stat.
+#}
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Platform Data Analysis</h1>
+    <p class="text-muted">Pure mathematical analytics representing exact matches from raw datasets.</p>
+</div>
+
+<!-- Key Metrics Cards -->
+<div class="cards-grid">
+    {% for stat in platform_stats %}
+    <div class="card">
+        <div class="card-header">
+            <div class="platform-logo logo-{{ stat.name | lower | replace(' ', '') | replace('+', '') }}">
+                {{ stat.name[0] }}
+            </div>
+            <div class="card-title">{{ stat.name }}</div>
+        </div>
+        <div class="card-stats">
+            <div class="stat-row">
+                <span>Total Movies</span>
+                <span class="stat-value">{{ stat.total_movies }}</span>
+            </div>
+            <div class="stat-row">
+                <span>Avg IMDB Quality</span>
+                <span class="stat-value rating-badge">{{ stat.avg_rating }} ★</span>
+            </div>
+            <div class="stat-row">
+                <span>Value Score (Movies/₹)</span>
+                <span class="stat-value text-accent">{{ stat.value_score }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('platform_detail', platform_name=stat.name) }}" class="btn-primary">View Detailed Analysis</a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Charts Section -->
+<div class="charts-wrapper" style="margin-top:2rem;">
+    <div class="chart-container">
+        <div class="chart-header">
+            <h2>Total Library Size Comparison</h2>
+            <p class="text-muted">Exact number of titles available in raw dataset</p>
+        </div>
+        <canvas id="librarySizeChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-header">
+            <h2>Average Catalog Quality</h2>
+            <p class="text-muted">Mean IMDB Rating per Platform</p>
+        </div>
+        <canvas id="qualityChart"></canvas>
+    </div>
+
+    <div class="chart-container" style="grid-column: 1 / -1;">
+        <div class="chart-header">
+            <h2>Global Subscriber Growth (2020-2025)</h2>
+            <p class="text-muted">Active Paid Memberships (in Millions)</p>
+        </div>
+        <canvas id="subscriberChart"></canvas>
+    </div>
+
+    <div class="chart-container" style="grid-column: 1 / -1;">
+        <div class="chart-header">
+            <h2>Content Freshness (Post-2020)</h2>
+            <p class="text-muted">Absolute volume of movies released after 2020</p>
+        </div>
+        <canvas id="freshnessChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{# All the Chart.js code lives here.
+   We use {{ list | tojson }} to safely pass Python lists into JavaScript.
+   Chart.js then draws beautiful interactive charts from that data. #}
+<script>
+    const colors = {
+        'Netflix': '#e50914',
+        'Prime Video': '#00a8e1',
+        'Disney+ Hotstar': '#1f3796'
+    };
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = 'Inter';
+
+    const platforms = {{ platforms | tojson }};
+    const borderColors = platforms.map(p => colors[p]);
+    const bgColors = borderColors.map(c => c + '80');
+
+    // 1. Library Size Bar
+    const libCtx = document.getElementById('librarySizeChart').getContext('2d');
+    new Chart(libCtx, {
+        type: 'bar',
+        data: {
+            labels: platforms,
+            datasets: [{
+                label: 'Total Movies',
+                data: {{ library_sizes | tojson }},
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: 1,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // 2. Average Quality Polar Area
+    const qualCtx = document.getElementById('qualityChart').getContext('2d');
+    new Chart(qualCtx, {
+        type: 'polarArea',
+        data: {
+            labels: platforms,
+            datasets: [{
+                label: 'Mean IMDB Rating',
+                data: {{ avg_quality | tojson }},
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    min: 5.0,
+                    max: 10.0,
+                    ticks: { color: '#94a3b8', backdropColor: 'transparent' },
+                    grid: { color: '#334155' }
+                }
+            },
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+
+    // 3. Content Freshness Bar
+    const freshCtx = document.getElementById('freshnessChart').getContext('2d');
+    new Chart(freshCtx, {
+        type: 'bar',
+        data: {
+            labels: platforms,
+            datasets: [{
+                label: 'Movies Released Since 2020',
+                data: {{ freshness | tojson }},
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: 1,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true } }
+        }
+    });
+
+    // 4. Subscriber Growth Line Chart
+    const subCtx = document.getElementById('subscriberChart').getContext('2d');
+    const subscriberYears = {{ subscriber_years | tojson }};
+    const subscriberData = {{ subscriber_data | tojson }};
+
+    const lineDatasets = platforms.map(platform => ({
+        label: platform,
+        data: subscriberData[platform],
+        borderColor: colors[platform],
+        backgroundColor: colors[platform] + '33',
+        borderWidth: 3,
+        tension: 0.4,
+        pointBackgroundColor: colors[platform],
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true
+    }));
+
+    new Chart(subCtx, {
+        type: 'line',
+        data: { labels: subscriberYears, datasets: lineDatasets },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + 'M';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: { display: true, text: 'Subscribers (Millions)' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

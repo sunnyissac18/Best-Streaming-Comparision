@@ -1,0 +1,138 @@
+{#
+  insights.html — Data Insights Page
+
+  Shows statistical summaries and the IMDB rating distribution chart.
+
+  Variables from app.py (data_insights function):
+    highest_imdb        - dict: platform -> avg rating, sorted best first
+    popular_genres      - dict: genre -> percentage string e.g. {'Action': '25%'}
+    content_counts      - dict: platform -> total movie count
+    rating_labels       - list of bucket labels e.g. ['< 5', '5 - 6', ...]
+    rating_distribution - dict: platform -> list of counts per rating bucket
+
+  Jinja2 tip used here:
+    {% for platform, rating in highest_imdb.items() %}
+      .items() gives us both the key (platform) and value (rating) in one loop.
+
+    {% if loop.first %}
+      loop.first is True only on the FIRST iteration of a for loop.
+      We use it to show only the top-ranked platform in the insight cards.
+#}
+{% extends 'base.html' %}
+
+{% block title %}Data Insights & Predictions{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Platform Data Insights</h1>
+    <p class="text-muted">Analytical conclusions and predictive modeling from our datasets</p>
+</div>
+
+<!-- Key Insights Grid -->
+<div class="cards-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 2rem;">
+    <!-- Insight 1 -->
+    <div class="card" style="background: linear-gradient(145deg, rgba(30,41,59,1), rgba(15,23,42,1)); border-top: 4px solid var(--accent)">
+        <div class="card-header">
+            <h2 style="font-size: 1.25rem; margin: 0;">Highest Quality Content</h2>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Platform with Highest Avg IMDB</div>
+
+        {% for platform, rating in highest_imdb.items() %}
+        {% if loop.first %}
+        <div style="text-align: center; margin: 1rem 0;">
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-main);">{{ platform }}</div>
+            <div class="rating-badge" style="font-size: 1.5rem; display: inline-block; margin-top: 0.5rem;">{{ rating }} ★</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Insight 2 -->
+    <div class="card" style="background: linear-gradient(145deg, rgba(30,41,59,1), rgba(15,23,42,1)); border-top: 4px solid #10b981">
+        <div class="card-header">
+            <h2 style="font-size: 1.25rem; margin: 0;">Most Content Volume</h2>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Platform with Largest Catalog</div>
+
+        {% for platform, count in content_counts.items() %}
+        {% if loop.first %}
+        <div style="text-align: center; margin: 1rem 0;">
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--text-main);">{{ platform }}</div>
+            <div style="font-size: 1.5rem; color: #10b981; font-weight: bold; margin-top: 0.5rem;">{{ count }} Movies</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Insight 3 -->
+    <div class="card" style="background: linear-gradient(145deg, rgba(30,41,59,1), rgba(15,23,42,1)); border-top: 4px solid #8b5cf6">
+        <div class="card-header">
+            <h2 style="font-size: 1.25rem; margin: 0;">Most Popular Genres</h2>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Across all platforms combined</div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            {% for genre, percentage in popular_genres.items() %}
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 8px;">
+                <span style="font-weight: 500;">{{ loop.index }}. {{ genre }}</span>
+                <span style="color: #8b5cf6; font-weight: bold;">{{ percentage }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Rating Distribution Chart -->
+<div class="charts-wrapper" style="margin-top: 3rem;">
+    <div class="chart-container" style="grid-column: 1 / -1; min-height: 400px; display: flex; flex-direction: column;">
+        <div class="chart-header">
+            <h2>IMDB Rating Distribution</h2>
+            <p class="text-muted">Exact volume of content across different rating tiers.</p>
+        </div>
+
+        <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; margin-top: 1rem;">
+            <canvas id="ratingDistChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = 'Inter';
+
+    const colors = {
+        'Netflix': '#e50914',
+        'Prime Video': '#00a8e1',
+        'Disney+ Hotstar': '#1f3796'
+    };
+
+    const distCtx = document.getElementById('ratingDistChart').getContext('2d');
+    const labels = {{ rating_labels | tojson }};
+    const distData = {{ rating_distribution | tojson }};
+
+    const datasets = Object.keys(distData).map(platform => ({
+        label: platform,
+        data: distData[platform],
+        backgroundColor: colors[platform],
+        borderColor: colors[platform],
+        borderWidth: 1,
+        borderRadius: 4
+    }));
+
+    new Chart(distCtx, {
+        type: 'bar',
+        data: { labels: labels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Number of Movies' } },
+                x: { title: { display: true, text: 'IMDB Rating Bins' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

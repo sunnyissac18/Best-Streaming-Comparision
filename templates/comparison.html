@@ -1,0 +1,158 @@
+{#
+  comparison.html — Head-to-Head Platform Comparison
+
+  How the platform selection works:
+    - Two <select> dropdowns let the user pick platforms.
+    - onchange="this.form.submit()" auto-submits when a choice changes.
+    - The choices are sent as GET parameters: /compare/?p1=Netflix&p2=Prime+Video
+    - Flask reads them with request.args.get('p1') in app.py.
+
+  Variables from app.py (compare_platforms function):
+    all_platforms - list of all 3 platform names (for the dropdowns)
+    p1            - name of platform 1 (currently selected)
+    p2            - name of platform 2 (currently selected)
+    stats_p1      - dict of metrics for platform 1
+    stats_p2      - dict of metrics for platform 2
+
+  Jinja2 conditional styling used here:
+    {% if stats_p1.library_size > stats_p2.library_size %}text-accent{% endif %}
+    This adds a CSS class only if platform 1 wins that metric,
+    making the winning number appear highlighted in green.
+#}
+{% extends 'base.html' %}
+
+{% block title %}Compare Platforms - Streaming Analytics{% endblock %}
+
+{% block content %}
+<div class="dashboard-header text-center" style="text-align: center; margin-bottom: 2rem;">
+    <h1>Head-to-Head Comparison</h1>
+    <p class="text-muted">Select two platforms to compare their value and exact library metrics directly.</p>
+</div>
+
+<!-- Selection Form -->
+<div class="card" style="margin-bottom: 3rem; text-align: center;">
+    <form action="{{ url_for('compare_platforms') }}" method="GET" style="display: flex; justify-content: center; gap: 2rem; align-items: center; flex-wrap: wrap;">
+        <div class="form-group" style="margin: 0; min-width: 250px;">
+            <label>Platform 1</label>
+            <select name="p1" onchange="this.form.submit()">
+                {% for platform in all_platforms %}
+                    <option value="{{ platform }}" {% if platform == p1 %}selected{% endif %}>{{ platform }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="font-size: 2rem; font-weight: 800; color: var(--text-muted);">VS</div>
+
+        <div class="form-group" style="margin: 0; min-width: 250px;">
+            <label>Platform 2</label>
+            <select name="p2" onchange="this.form.submit()">
+                {% for platform in all_platforms %}
+                    <option value="{{ platform }}" {% if platform == p2 %}selected{% endif %}>{{ platform }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if p1 and p2 %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+
+    <!-- Platform 1 -->
+    <div class="card" style="border-top: 5px solid var(--{{ p1 | lower | replace(' ', '') | replace('+', '') }}, var(--accent));">
+        <div class="card-header" style="justify-content: center; flex-direction: column; text-align: center;">
+            <div class="platform-logo logo-{{ p1 | lower | replace(' ', '') | replace('+', '') }}" style="width: 80px; height: 80px; font-size: 2rem;">
+                {{ p1[0] }}
+            </div>
+            <div class="card-title" style="font-size: 2rem; margin-top: 1rem;">{{ p1 }}</div>
+        </div>
+
+        <div class="card-stats" style="margin-top: 2rem; font-size: 1.1rem; gap: 1rem;">
+            <div class="stat-row">
+                <span>Total Movies</span>
+                <span class="stat-value {% if stats_p1.library_size > stats_p2.library_size %}text-accent{% endif %}">
+                    {{ stats_p1.library_size }}
+                </span>
+            </div>
+            <div class="stat-row">
+                <span>Monthly Price</span>
+                <span class="stat-value">₹{{ stats_p1.price }}</span>
+            </div>
+            <div class="stat-row" style="padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <span>Value Score (Movies/₹)</span>
+                <span class="stat-value {% if stats_p1.value_score > stats_p2.value_score %}text-accent{% endif %}" style="font-size: 1.5rem;">
+                    {{ stats_p1.value_score }}
+                </span>
+            </div>
+            <div class="stat-row" style="margin-top: 1rem;">
+                <span>Avg IMDB Quality</span>
+                <span class="stat-value rating-badge {% if stats_p1.avg_quality > stats_p2.avg_quality %}text-accent{% endif %}">
+                    {{ stats_p1.avg_quality }} ★
+                </span>
+            </div>
+            <div class="stat-row">
+                <span>Post-2020 Releases</span>
+                <span class="stat-value {% if stats_p1.freshness > stats_p2.freshness %}text-accent{% endif %}">
+                    {{ stats_p1.freshness }}
+                </span>
+            </div>
+            <div class="stat-row" style="flex-direction: column; text-align: center; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                <span>Dominant Genres</span>
+                <span class="stat-value" style="font-size: 0.9rem; margin-top: 0.5rem; line-height: 1.4;">
+                    {{ stats_p1.top_genres }}
+                </span>
+            </div>
+        </div>
+        <a href="{{ url_for('platform_detail', platform_name=p1) }}" class="btn-primary" style="margin-top: auto;">Deep Dive {{ p1 }}</a>
+    </div>
+
+    <!-- Platform 2 -->
+    <div class="card" style="border-top: 5px solid var(--accent);">
+        <div class="card-header" style="justify-content: center; flex-direction: column; text-align: center;">
+            <div class="platform-logo logo-{{ p2 | lower | replace(' ', '') | replace('+', '') }}" style="width: 80px; height: 80px; font-size: 2rem;">
+                {{ p2[0] }}
+            </div>
+            <div class="card-title" style="font-size: 2rem; margin-top: 1rem;">{{ p2 }}</div>
+        </div>
+
+        <div class="card-stats" style="margin-top: 2rem; font-size: 1.1rem; gap: 1rem;">
+            <div class="stat-row">
+                <span>Total Movies</span>
+                <span class="stat-value {% if stats_p2.library_size > stats_p1.library_size %}text-accent{% endif %}">
+                    {{ stats_p2.library_size }}
+                </span>
+            </div>
+            <div class="stat-row">
+                <span>Monthly Price</span>
+                <span class="stat-value">₹{{ stats_p2.price }}</span>
+            </div>
+            <div class="stat-row" style="padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <span>Value Score (Movies/₹)</span>
+                <span class="stat-value {% if stats_p2.value_score > stats_p1.value_score %}text-accent{% endif %}" style="font-size: 1.5rem;">
+                    {{ stats_p2.value_score }}
+                </span>
+            </div>
+            <div class="stat-row" style="margin-top: 1rem;">
+                <span>Avg IMDB Quality</span>
+                <span class="stat-value rating-badge {% if stats_p2.avg_quality > stats_p1.avg_quality %}text-accent{% endif %}">
+                    {{ stats_p2.avg_quality }} ★
+                </span>
+            </div>
+            <div class="stat-row">
+                <span>Post-2020 Releases</span>
+                <span class="stat-value {% if stats_p2.freshness > stats_p1.freshness %}text-accent{% endif %}">
+                    {{ stats_p2.freshness }}
+                </span>
+            </div>
+            <div class="stat-row" style="flex-direction: column; text-align: center; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                <span>Dominant Genres</span>
+                <span class="stat-value" style="font-size: 0.9rem; margin-top: 0.5rem; line-height: 1.4;">
+                    {{ stats_p2.top_genres }}
+                </span>
+            </div>
+        </div>
+        <a href="{{ url_for('platform_detail', platform_name=p2) }}" class="btn-primary" style="margin-top: auto;">Deep Dive {{ p2 }}</a>
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

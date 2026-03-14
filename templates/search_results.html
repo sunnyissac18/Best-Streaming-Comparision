@@ -1,0 +1,71 @@
+{#
+  search_results.html — Movie Search Results
+
+  How search works in this app:
+    - User types a movie name in the nav bar search box and presses Enter.
+    - The form sends it as a GET request: /search/?q=batman
+    - Flask reads the 'q' parameter with request.args.get('q').
+    - Pandas filters the CSV for matching movie names.
+    - Results are passed here and shown in a table.
+
+  Variables from app.py (search_results function):
+    query       - the text the user searched for
+    results     - list of dicts, each with: movie_name, platform,
+                  genre, imdb_rating, release_year
+    total_found - how many movies matched the search
+
+  Jinja2 used here:
+    {% if results %}   - only show table if there are results
+    {% elif query %}   - searched but found nothing
+    {{ movie.movie_name }}  - access dict key inside a for loop
+#}
+{% extends 'base.html' %}
+
+{% block title %}Search Results - Streaming Analytics{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Search Results</h1>
+    {% if query %}
+        <p class="text-muted">Showing results for "<strong>{{ query }}</strong>" ({{ total_found }} found)</p>
+    {% else %}
+        <p class="text-muted">Please enter a search term above.</p>
+    {% endif %}
+</div>
+
+{% if results %}
+<div class="table-container" style="margin-top: 2rem;">
+    <table>
+        <thead>
+            <tr>
+                <th>Movie Title</th>
+                <th>Platform</th>
+                <th>Genre</th>
+                <th>Release Year</th>
+                <th>IMDB Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in results %}
+            <tr>
+                <td style="font-weight: 500;">{{ movie.movie_name }}</td>
+                <td>
+                    <span class="platform-logo logo-{{ movie.platform | lower | replace(' ', '') | replace('+', '') }}" style="width: auto; height: auto; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                        {{ movie.platform }}
+                    </span>
+                </td>
+                <td>{{ movie.genre }}</td>
+                <td>{{ movie.release_year }}</td>
+                <td><span class="rating-badge">{{ movie.imdb_rating }} ★</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif query %}
+<div class="card" style="margin-top: 2rem; text-align: center; padding: 3rem;">
+    <h2 class="text-muted">No movies found</h2>
+    <p>We couldn't find any exact matches for "{{ query }}" across Netflix, Prime Video, or Disney+ Hotstar.</p>
+</div>
+{% endif %}
+{% endblock %}

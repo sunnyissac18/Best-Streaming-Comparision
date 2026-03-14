@@ -1,0 +1,93 @@
+{#
+  base.html — The MASTER TEMPLATE (also called a "layout")
+
+  Every other HTML page in this project EXTENDS this file.
+  That means they all automatically get the same:
+    - <head> section (fonts, CSS, Chart.js library)
+    - Navigation bar at the top
+    - Page container wrapper
+
+  The special tags used here are Jinja2 syntax (Flask's template language):
+
+    {% block name %} ... {% endblock %}
+      → A "slot" that child templates can fill in with their own content.
+        If a child doesn't fill it, it stays empty.
+
+    {% block title %}{% endblock %}
+      → Child pages override this to set the browser tab title.
+
+    {% block content %}{% endblock %}
+      → The main page content goes here (overridden by every child page).
+
+    {% block scripts %}{% endblock %}
+      → Optional JavaScript code added by pages that need charts.
+
+    {{ url_for('function_name') }}
+      → Generates the correct URL for a Flask route function.
+        e.g. url_for('home_dashboard') → '/'
+        This is better than hardcoding '/' because if you change
+        a URL in app.py, all templates update automatically.
+
+    {{ url_for('static', filename='css/styles.css') }}
+      → Generates the URL for a file in the static/ folder.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {# Each child page sets its own title using the title block #}
+    <title>{% block title %}Streaming Analytics{% endblock %}</title>
+
+    {# Google Fonts - loads the Inter font from the internet #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    {# Our custom CSS file from the static/css/ folder #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    {# Chart.js library loaded from a CDN (Content Delivery Network)
+       This gives us ready-made bar charts, line charts, pie charts etc. #}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    {# ---- NAVIGATION BAR ---------------------------------- #}
+    <nav>
+        {# Logo - clicking it goes back to the homepage #}
+        <a href="{{ url_for('home_dashboard') }}" class="logo">Stream<span>Analytics</span></a>
+
+        <div class="nav-links">
+            <a href="{{ url_for('home_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('compare_platforms') }}">Compare</a>
+            <a href="{{ url_for('recommendation_system') }}">For You</a>
+            <a href="{{ url_for('data_insights') }}">Insights</a>
+
+            {# Search form - method="GET" puts the search term in the URL
+               e.g. /search/?q=batman   so it's shareable and bookmarkable #}
+            <form action="{{ url_for('search_results') }}" method="GET"
+                  class="search-form"
+                  style="display:flex; align-items:center; gap:0.5rem; margin-left: 1rem;">
+                <input type="text" name="q" placeholder="Search for a movie..." required
+                       style="padding: 0.5rem; border-radius: 6px; width: 200px;
+                              border: 1px solid rgba(255,255,255,0.2);
+                              background: rgba(0,0,0,0.2); color: white;">
+                <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem; margin: 0;">Search</button>
+            </form>
+        </div>
+    </nav>
+
+    {# ---- MAIN CONTENT AREA ------------------------------- #}
+    {# Each child template fills in this block with its own content #}
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {# ---- OPTIONAL SCRIPTS BLOCK -------------------------- #}
+    {# Pages that need JavaScript (like chart code) add it here #}
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

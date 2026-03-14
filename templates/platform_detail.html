@@ -1,0 +1,189 @@
+{#
+  platform_detail.html — Single Platform Deep-Dive Page
+
+  This page is reached by clicking "View Detailed Analysis" on the homepage.
+  The URL looks like: /platform/netflix/ or /platform/prime/
+
+  Variables from app.py (platform_detail function):
+    platform_name  - full name e.g. 'Netflix'
+    platform_slug  - short URL name e.g. 'netflix'
+    genre_labels   - list of genre names for the pie chart
+    genre_data     - list of movie counts per genre
+    rating_labels  - genre names for the bar chart x-axis
+    rating_data    - average IMDB ratings for each genre
+    top_movies     - list of dicts for the top 10 movies
+                     each dict has: movie_name, genre, imdb_rating,
+                                    release_year, poster, plot
+    trend_years    - list of years for the release trend chart
+    trend_counts   - list of movie counts per year
+
+  Note on movie posters:
+    The poster URLs come from the TMDB API (fetched live in app.py).
+    If a movie is not found on TMDB, a fallback stock photo is used instead.
+#}
+{% extends 'base.html' %}
+
+{% block title %}{{ platform_name }} Detailed Analysis{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="platform-logo logo-{{ platform_slug | replace(' ', '') | replace('+', '') }}">
+            {{ platform_name[0] }}
+        </div>
+        <div>
+            <h1>{{ platform_name }} Analysis</h1>
+            <p class="text-muted">Deep dive into content catalog and performance</p>
+        </div>
+    </div>
+</div>
+
+<div class="charts-wrapper" style="margin-top: 2rem;">
+    <div class="chart-container">
+        <div class="chart-header">
+            <h2>Genre Distribution</h2>
+            <p class="text-muted">Number of movies per genre</p>
+        </div>
+        <div style="max-height: 400px; display: flex; justify-content: center;">
+            <canvas id="genrePieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-header">
+            <h2>Average IMDB Rating by Genre</h2>
+            <p class="text-muted">Performance analysis across different categories</p>
+        </div>
+        <canvas id="genreRatingChart"></canvas>
+    </div>
+
+    <div class="chart-container" style="grid-column: 1 / -1;">
+        <div class="chart-header">
+            <h2>Movie Release Trend</h2>
+            <p class="text-muted">Volume of content released over time on this platform</p>
+        </div>
+        <canvas id="releaseTrendChart"></canvas>
+    </div>
+</div>
+
+<div class="table-container" style="background: transparent; border: none; padding: 0;">
+    <h2>Top 10 Highest Rated Movies</h2>
+    <p class="text-muted" style="margin-bottom: 2rem;">Critically acclaimed titles currently streaming, enhanced with live data from TMDB</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+        {% for movie in top_movies %}
+        <div class="card" style="display: flex; flex-direction: column; height: 100%; border-top: 4px solid var(--accent); padding: 0; overflow: hidden;">
+            {% if movie.poster %}
+            <div style="height: 200px; width: 100%; overflow: hidden; background: #000;">
+                <img src="{{ movie.poster }}" alt="{{ movie.movie_name }} Poster"
+                    style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+            </div>
+            {% else %}
+            <div style="height: 200px; width: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, rgba(30,41,59,1), rgba(15,23,42,1)); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <span class="text-muted" style="font-size: 3rem;">🎬</span>
+            </div>
+            {% endif %}
+
+            <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.2rem; line-height: 1.3;">{{ movie.movie_name }}</h3>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            {{ movie.release_year }}
+                        </div>
+                    </div>
+                    <span class="rating-badge" style="font-size: 1rem;">{{ movie.imdb_rating }} ★</span>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <span style="background: rgba(255,255,255,0.1); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; color: var(--text-muted);">{{ movie.genre }}</span>
+                </div>
+
+                <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                    {{ movie.plot }}
+                </p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = 'Inter';
+
+    const palette = [
+        '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e',
+        '#f59e0b', '#10b981', '#06b6d4', '#6366f1'
+    ];
+
+    // 1. Genre Pie Chart
+    const pieCtx = document.getElementById('genrePieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ genre_labels | tojson }},
+            datasets: [{
+                data: {{ genre_data | tojson }},
+                backgroundColor: palette,
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } },
+            cutout: '70%'
+        }
+    });
+
+    // 2. Genre Rating Bar Chart
+    const barCtx = document.getElementById('genreRatingChart').getContext('2d');
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ rating_labels | tojson }},
+            datasets: [{
+                label: 'Average IMDB Rating',
+                data: {{ rating_data | tojson }},
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: '#3b82f6',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { min: 0, max: 10 } }
+        }
+    });
+
+    // 3. Release Trend Line Chart
+    const lineCtx = document.getElementById('releaseTrendChart').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: {{ trend_years | tojson }},
+            datasets: [{
+                label: 'Movies Released',
+                data: {{ trend_counts | tojson }},
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#10b981',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+</script>
+{% endblock %}

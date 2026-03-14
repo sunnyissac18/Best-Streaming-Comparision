@@ -1,0 +1,128 @@
+{#
+  recommendation.html — Platform Recommendation Page
+
+  This page has a FORM on the left and RESULTS on the right.
+
+  How forms work in Flask:
+    - The form uses method="POST" which sends data to the server securely.
+    - When the user clicks submit, the browser sends the form data to Flask.
+    - Flask reads it with request.form in app.py.
+    - The page reloads and shows the results.
+
+  Variables from app.py (recommendation_system function):
+    all_genres           - list of all genre strings for the checkboxes
+    recommended_platform - the winning platform name (or None if not yet submitted)
+    recommended_score    - the numeric score of the winner
+    reasons              - list of 3 reason strings explaining the score
+    alternatives         - list of dicts for runner-up platforms
+    method               - 'GET' (first visit) or 'POST' (form submitted)
+
+  Jinja2 features used:
+    {% if recommended_platform %}  - only show results if we have a winner
+    {% elif method == 'POST' %}    - submitted but no results = no matches
+    {% else %}                     - page not yet submitted = show placeholder
+    {% for reason in reasons %}    - loop through the reason strings
+#}
+{% extends 'base.html' %}
+
+{% block title %}Platform Recommendation{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Find Your Perfect Platform</h1>
+    <p class="text-muted">Tell us what you like to watch, and our engine will recommend the best fit.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 3rem; margin-top: 2rem;">
+    <!-- Form Section -->
+    <div class="chart-container" style="align-self: start;">
+        <h2>Your Preferences</h2>
+        <form method="POST" action="{{ url_for('recommendation_system') }}">
+            <div class="form-group">
+                <label>Select Favorite Genres:</label>
+                <div class="checkbox-grid">
+                    {% for genre in all_genres %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="genres" value="{{ genre }}">
+                        {{ genre }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="min_rating">Minimum IMDB Rating (1-10):</label>
+                <input type="number" id="min_rating" name="min_rating" min="1" max="10" step="0.5" value="7.0">
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; border: none; cursor: pointer; font-size: 1rem;">
+                Get Recommendation
+            </button>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    <div>
+        {% if recommended_platform %}
+        <div class="recommendation-result">
+            <div class="result-title">Top Recommended Platform for You</div>
+            <div class="result-platform">{{ recommended_platform }}</div>
+            <div class="text-center" style="margin-bottom: 2rem; font-size: 1.2rem;">
+                Compatibility Score: <span style="color:var(--accent-color); font-weight: 800; font-size: 1.5rem;">{{ recommended_score }}</span>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: var(--text-main);">Why this choice?</h3>
+            <ul class="reasons-list">
+                {% for reason in reasons %}
+                <li>✓ {{ reason }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        {% if alternatives %}
+        <h2>Other Great Options</h2>
+        <div class="cards-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 1rem;">
+            {% for alt in alternatives %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="platform-logo logo-{{ alt.name | lower | replace(' ', '') | replace('+', '') }}">
+                        {{ alt.name[0] }}
+                    </div>
+                    <div class="card-title">{{ alt.name }}</div>
+                </div>
+                <div class="text-muted">Compatibility Score: <span style="color:var(--text-main); font-weight: bold;">{{ alt.score }}</span></div>
+                <ul style="margin-top: 1rem; font-size: 0.85rem; padding-left: 0; list-style-type: none; line-height: 1.4;">
+                    {% for reason in alt.reasons %}
+                    <li style="color: var(--text-muted); margin-bottom: 0.3rem;">✓ {{ reason }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <details style="margin-top: 3rem; text-align: center;">
+            <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem; user-select: none;">ℹ️ How is the Compatibility Score calculated?</summary>
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); display: inline-block; text-align: left;">
+                The Score is a mathematical representation of how well a platform fits your preferences.<br><br>
+                <strong>Formula:</strong>
+                <br><code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">(Matching Movies ÷ 100) + Avg IMDB Rating + (Recent Releases ÷ 50)</code>
+            </div>
+        </details>
+
+        {% elif method == 'POST' %}
+        <div class="card" style="text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🤷‍♂️</div>
+            <h2>No Matches Found</h2>
+            <p class="text-muted">Try lowering your rating threshold or selecting more genres.</p>
+        </div>
+        {% else %}
+        <div class="card" style="text-align: center; padding: 4rem; display: flex; flex-direction: column; justify-content: center; height: 100%; border: 1px dashed rgba(255,255,255,0.2); background: transparent;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎯</div>
+            <h2 style="color: var(--text-muted)">Waiting for your preferences...</h2>
+            <p class="text-muted">Submit the form on the left to see your recommendation.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
