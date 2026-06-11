@@ -558,5 +558,8 @@ def compare_platforms():
 #   - Detailed error messages in the browser when something breaks
 #   - Auto-restart whenever you save changes to the code
 #   (Always set debug=False before deploying to the internet!)
-if __name__ == '__main__':
-    app.run(debug=True)
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
