@@ -1,5 +1,7 @@
 # OTT Streaming Analytics — Flask Version
 
+Demo: https://stream-analytics.onrender.com
+
 ## Project Structure
 ```
 flask_ott/

@@ -234,7 +234,7 @@ def platform_detail(platform_name):
         movie_query = movie['movie_name'].replace(' ', '+')
 
         # Build the TMDB search URL for this movie
-        url = f"https://api.themoviedb.org/3/search/movie?query={movie_query}&include_adult=false&language=en-US&page=1"
+        url = f"https://api.themoviedb.org/3/search/movie?query={movie_query}&include_adult=true&language=en-US&page=1"
 
         # Set fallback values in case the API call fails or the movie is not found
         movie['poster'] = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60'
